@@ -1,5 +1,9 @@
+import { dbConnect } from "@/lib/dbConnect";
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
+import GoogleProvider from "next-auth/providers/google";
+import GitHubProvider from "next-auth/providers/github";
 
 const userList = [
   { name: "bablu", password: "1234" },
@@ -18,31 +22,29 @@ export const authOptions = {
       // e.g. domain, username, password, 2FA token, etc.
       // You can pass any HTML attribute to the <input> tag through the object.
       credentials: {
-        username: {
-          label: "Username",
-          type: "text",
-          placeholder: "Jonny sins",
+        email: {
+          label: "Email",
+          type: "email",
+          placeholder: "Enter your email",
         },
         password: {
           label: "Password",
           type: "password",
-          placeholder: "*******",
-        },
-        secretCode: {
-          label: "Secret Code",
-          type: "number",
-          placeholder: "Add your fucking code",
+          placeholder: "Enter your password",
         },
       },
       async authorize(credentials, req) {
-        const { username, password, secretCode } = credentials;
+        const { email, password } = credentials;
         // My Own logic loading
-        const user = userList.find((u) => u.name === username);
+
+        const user = await dbConnect("users").findOne({ email });
+        // const user = userList.find((u) => u.name === username);
         if (!user) {
           return null;
         }
 
-        const isPassword = user.password === password;
+        // const isPassword = user.password === password;
+        const isPassword = await bcrypt.compare(password, user.password);
         if (isPassword) {
           return user;
         }
@@ -50,6 +52,14 @@ export const authOptions = {
         // Return null if user data could not be retrieved
         return null;
       },
+    }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
+    GitHubProvider({
+      clientId: process.env.GITHUB_ID,
+      clientSecret: process.env.GITHUB_SECRET,
     }),
   ],
 };
